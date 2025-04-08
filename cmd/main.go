@@ -10,17 +10,17 @@ var (
 	setupLog = ctrl.Log.WithName("setup")
 )
 
-func main(){
+func main() {
 
-  cnfg := ctrl.GetConfigOrDie()
+	cnfg := ctrl.GetConfigOrDie()
 
-  mgr,err := ctrl.NewManager(cnfg,ctrl.Options{})
+	mgr, err := ctrl.NewManager(cnfg, ctrl.Options{})
 
-  if err != nil {
-    setupLog.Error(err, "Unable to create the manager")
-    os.Exit(1)
-  }
+	if err != nil {
+		setupLog.Error(err, "Unable to create the manager")
+		os.Exit(1)
+	}
 
-  setupLog.Info("manager is created ", mgr)
+	setupLog.Info("manager is created ", mgr)
 
 }

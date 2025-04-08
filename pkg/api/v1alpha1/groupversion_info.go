@@ -7,8 +7,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/scheme"
 )
 
-var(
-  GroupVersion = schema.GroupVersion{Group: "ebpf.monitoring.dev", Version: "v1alpha1"}
-  SchemeBuilder = &scheme.Builder{GroupVersion: GroupVersion}  
-  AddToScheme = SchemeBuilder.AddToScheme
+var (
+	GroupVersion  = schema.GroupVersion{Group: "ebpf.monitoring.dev", Version: "v1alpha1"}
+	SchemeBuilder = &scheme.Builder{GroupVersion: GroupVersion}
+	AddToScheme   = SchemeBuilder.AddToScheme
 )
