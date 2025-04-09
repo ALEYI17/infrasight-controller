@@ -18,15 +18,17 @@ package controller
 
 import (
 	"context"
-  "fmt"
-  "time"
-  appsv1 "k8s.io/api/apps/v1"
-  corev1 "k8s.io/api/core/v1"
-  "k8s.io/apimachinery/pkg/api/equality"
-  apierrors "k8s.io/apimachinery/pkg/api/errors"
-  "k8s.io/apimachinery/pkg/api/meta"
-  metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"fmt"
+	"time"
+
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -42,14 +44,14 @@ type EbpfDaemonSetReconciler struct {
 // +kubebuilder:rbac:groups=ebpf.monitoring.dev,resources=ebpfdaemonsets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=ebpf.monitoring.dev,resources=ebpfdaemonsets/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=ebpf.monitoring.dev,resources=ebpfdaemonsets/finalizers,verbs=update
-// +kubebuilder:rbac:groups=apps,resources=daemonset,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=apps,resources=daemonsets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=events,verbs=create;patch
 // +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch
 
 func (r *EbpfDaemonSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-  	log := logf.FromContext(ctx)
+	log := logf.FromContext(ctx)
 
-  // Manage the CR 
+	// Manage the CR
 	ebpfDs := &ebpfv1alpha1.EbpfDaemonSet{}
 
 	err := r.Get(ctx, req.NamespacedName, ebpfDs)
@@ -77,10 +79,10 @@ func (r *EbpfDaemonSetReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			return ctrl.Result{}, err
 		}
 	}
-  
-  // Manage the the DaemonSet
+
+	// Manage the the DaemonSet
 	found := &appsv1.DaemonSet{}
-	if err := r.Get(ctx, req.NamespacedName, found); err != nil && apierrors.IsNotFound(err) {
+	if err := r.Get(ctx, types.NamespacedName{Name: ebpfDs.Name,Namespace: ebpfDs.Namespace}, found); err != nil && apierrors.IsNotFound(err) {
 		ds, err := r.DaemonSetForEbpf(ebpfDs)
 		if err != nil {
 
@@ -102,46 +104,46 @@ func (r *EbpfDaemonSetReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		}
 		return ctrl.Result{RequeueAfter: time.Minute}, nil
 
-	} else if err != nil{
+	} else if err != nil {
 		log.Error(err, "Failed to get DaemonSet")
 		return ctrl.Result{}, err
 	}
 
-  desired , err := r.DaemonSetForEbpf(ebpfDs)
-  if err != nil {
-    log.Error(err, "Unable to generate desired DaemonSet ")
-    return ctrl.Result{},err
-  }
+	desired, err := r.DaemonSetForEbpf(ebpfDs)
+	if err != nil {
+		log.Error(err, "Unable to generate desired DaemonSet ")
+		return ctrl.Result{}, err
+	}
 
-  if !equality.Semantic.DeepEqual(desired.Spec, found.Spec){
-    log.Info("Spec change detected, updating daemonset")
-    found.Spec = desired.Spec
+	if !equality.Semantic.DeepEqual(desired.Spec.Template, found.Spec.Template) {
+		log.Info("Spec change detected, updating daemonset")
+		found.Spec.Template = desired.Spec.Template
 
-    err := r.Update(ctx, found)
-    if err!= nil{
-      log.Error(err, "Error updating daemonset")
-      return ctrl.Result{}, err
-    }
-    meta.SetStatusCondition(&ebpfDs.Status.Conditions,
-			metav1.Condition{Type: "Available", Status: metav1.ConditionUnknown, Reason: "Reconciling", 
-      Message: fmt.Sprintf("EbpfDaemonSet is updating" ) })
-    if err := r.Status().Update(ctx, ebpfDs); err !=nil{
-      log.Error(err, "Failed to update status")                                                  
-      return ctrl.Result{}, err
+		err := r.Update(ctx, found)
+		if err != nil {
+			log.Error(err, "Error updating daemonset")
+			return ctrl.Result{}, err
+		}
+		meta.SetStatusCondition(&ebpfDs.Status.Conditions,
+			metav1.Condition{Type: "Available", Status: metav1.ConditionUnknown, Reason: "Reconciling",
+				Message: fmt.Sprintf("EbpfDaemonSet is updating")})
+		if err := r.Status().Update(ctx, ebpfDs); err != nil {
+			log.Error(err, "Failed to update status")
+			return ctrl.Result{}, err
 
-    }
+		}
 
-    return ctrl.Result{RequeueAfter: time.Minute},nil
-  }       
+		return ctrl.Result{RequeueAfter: time.Minute}, nil
+	}
 
-  meta.SetStatusCondition(&ebpfDs.Status.Conditions,
-			metav1.Condition{Type: "Available", Status: metav1.ConditionTrue, Reason: "Reconciling", 
-      Message: fmt.Sprintf("EbpfDaemonSet created successfully" ) })
+	meta.SetStatusCondition(&ebpfDs.Status.Conditions,
+		metav1.Condition{Type: "Available", Status: metav1.ConditionTrue, Reason: "Reconciling",
+			Message: fmt.Sprintf("EbpfDaemonSet created successfully")})
 
-  if err := r.Status().Update(ctx, ebpfDs) ; err!=nil{
-    log.Error(err, "Failed to update status")                                                  
-    return ctrl.Result{}, err
-  }
+	if err := r.Status().Update(ctx, ebpfDs); err != nil {
+		log.Error(err, "Failed to update status")
+		return ctrl.Result{}, err
+	}
 
 	return ctrl.Result{}, nil
 }
@@ -150,7 +152,7 @@ func (r *EbpfDaemonSetReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 func (r *EbpfDaemonSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&ebpfv1alpha1.EbpfDaemonSet{}).
-    Owns(&appsv1.DaemonSet{}).
+		Owns(&appsv1.DaemonSet{}).
 		Named("ebpfdaemonset").
 		Complete(r)
 }

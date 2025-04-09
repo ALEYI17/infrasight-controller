@@ -22,7 +22,7 @@ rules:
 - apiGroups:
   - apps
   resources:
-  - daemonset
+  - daemonsets
   verbs:
   - create
   - delete

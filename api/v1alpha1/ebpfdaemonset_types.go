@@ -17,14 +17,13 @@ limitations under the License.
 package v1alpha1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-  corev1 "k8s.io/api/core/v1"
 )
-
 
 // EbpfDaemonSetSpec defines the desired state of EbpfDaemonSet.
 type EbpfDaemonSetSpec struct {
-  Image         string                      `json:"image"`
+	Image         string                      `json:"image"`
 	NodeSelector  map[string]string           `json:"nodeSelector,omitempty"`
 	Tolerations   []corev1.Toleration         `json:"tolerations,omitempty"`
 	Resources     corev1.ResourceRequirements `json:"resources,omitempty"`
@@ -33,7 +32,7 @@ type EbpfDaemonSetSpec struct {
 
 // EbpfDaemonSetStatus defines the observed state of EbpfDaemonSet.
 type EbpfDaemonSetStatus struct {
-  Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
+	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
 }
 
 // +kubebuilder:object:root=true
