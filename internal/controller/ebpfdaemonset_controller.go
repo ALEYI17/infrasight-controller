@@ -8,6 +8,7 @@ import (
 	ebpfdsv1alpha1 "github.com/ALEYI17/kube-ebpf-monitor/pkg/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -25,6 +26,7 @@ type EbpfDaemonSetReconciler struct {
 // +kubebuilder:rbac:groups=ebpf.monitoring.dev,resources=ebpfdaemonsets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=ebpf.monitoring.dev,resources=ebpfdaemonsets/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=ebpf.monitoring.dev,resources=ebpfdaemonsets/finalizers,verbs=update
+// +kubebuilder:rbac:groups=apps,resources=daemonset,verbs=get;list;watch;create;update;patch;delete
 
 func (r *EbpfDaemonSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
@@ -87,7 +89,32 @@ func (r *EbpfDaemonSetReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, err
 	}
 
-  
+  desired , err := r.DaemonSetForEbpf(ebpfDs)
+  if err != nil {
+    log.Error(err, "Unable to generate desired DaemonSet ")
+    return ctrl.Result{},err
+  }
+
+  if !equality.Semantic.DeepEqual(desired.Spec, found.Spec){
+    log.Info("Spec change detected, updating daemonset")
+    found.Spec = desired.Spec
+
+    err := r.Update(ctx, found)
+    if err!= nil{
+      log.Error(err, "Error updating daemonset")
+      return ctrl.Result{}, err
+    }
+    meta.SetStatusCondition(&ebpfDs.Status.Conditions,
+			metav1.Condition{Type: "Available", Status: metav1.ConditionUnknown, Reason: "Reconciling", 
+      Message: fmt.Sprintf("EbpfDaemonSet is updating" ) })
+    if err := r.Status().Update(ctx, ebpfDs); err !=nil{
+      log.Error(err, "Failed to update status")                                                  
+      return ctrl.Result{}, err
+
+    }
+
+    return ctrl.Result{RequeueAfter: time.Minute},nil
+  }       
 
   meta.SetStatusCondition(&ebpfDs.Status.Conditions,
 			metav1.Condition{Type: "Available", Status: metav1.ConditionTrue, Reason: "Reconciling", 

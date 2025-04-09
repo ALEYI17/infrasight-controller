@@ -1,0 +1,15 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/name: ebpf-monitor-controller-manager
+  name: ebpf-monitor-rolebinding
+subjects:
+  - kind: ServiceAccount
+    name: ebpf-monitor-controller-manager
+    namespace: system
+roleRef:
+  kind: ClusterRole
+  name: ebpf-monitor-role
+  apiGroup: rbac.authorization.k8s.io
+

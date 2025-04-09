@@ -1,0 +1,44 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: ebpfdaemonset-manager-role
+rules:
+- apiGroups:
+  - apps
+  resources:
+  - daemonset
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ebpf.monitoring.dev
+  resources:
+  - ebpfdaemonsets
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ebpf.monitoring.dev
+  resources:
+  - ebpfdaemonsets/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - ebpf.monitoring.dev
+  resources:
+  - ebpfdaemonsets/status
+  verbs:
+  - get
+  - patch
+  - update
