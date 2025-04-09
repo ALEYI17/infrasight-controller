@@ -1,0 +1,4 @@
+## Append samples of your project ##
+resources:
+- ebpf_v1alpha1_ebpfdaemonset.yaml
+# +kubebuilder:scaffold:manifestskustomizesamples

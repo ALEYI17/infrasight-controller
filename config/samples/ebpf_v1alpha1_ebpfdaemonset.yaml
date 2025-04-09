@@ -1,0 +1,9 @@
+apiVersion: ebpf.monitoring.dev/v1alpha1
+kind: EbpfDaemonSet
+metadata:
+  labels:
+    app.kubernetes.io/name: kube-ebpf-monitor
+    app.kubernetes.io/managed-by: kustomize
+  name: ebpfdaemonset-sample
+spec:
+  # TODO(user): Add fields here

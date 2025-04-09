@@ -1,38 +1,56 @@
+/*
+Copyright 2025.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package controller
 
 import (
 	"context"
-	"fmt"
-	"time"
-
-	ebpfdsv1alpha1 "github.com/ALEYI17/kube-ebpf-monitor/pkg/api/v1alpha1"
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/equality"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+  "fmt"
+  "time"
+  appsv1 "k8s.io/api/apps/v1"
+  corev1 "k8s.io/api/core/v1"
+  "k8s.io/apimachinery/pkg/api/equality"
+  apierrors "k8s.io/apimachinery/pkg/api/errors"
+  "k8s.io/apimachinery/pkg/api/meta"
+  metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	ebpfv1alpha1 "github.com/ALEYI17/kube-ebpf-monitor/api/v1alpha1"
 )
 
 type EbpfDaemonSetReconciler struct {
 	client.Client
-	scheme *runtime.Scheme
+	Scheme *runtime.Scheme
 }
 
 // +kubebuilder:rbac:groups=ebpf.monitoring.dev,resources=ebpfdaemonsets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=ebpf.monitoring.dev,resources=ebpfdaemonsets/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=ebpf.monitoring.dev,resources=ebpfdaemonsets/finalizers,verbs=update
 // +kubebuilder:rbac:groups=apps,resources=daemonset,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=core,resources=events,verbs=create;patch
+// +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch
 
 func (r *EbpfDaemonSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := logf.FromContext(ctx)
+  	log := logf.FromContext(ctx)
 
   // Manage the CR 
-	ebpfDs := &ebpfdsv1alpha1.EbpfDaemonSet{}
+	ebpfDs := &ebpfv1alpha1.EbpfDaemonSet{}
 
 	err := r.Get(ctx, req.NamespacedName, ebpfDs)
 	if err != nil {
@@ -128,15 +146,16 @@ func (r *EbpfDaemonSetReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	return ctrl.Result{}, nil
 }
 
+// SetupWithManager sets up the controller with the Manager.
 func (r *EbpfDaemonSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&ebpfdsv1alpha1.EbpfDaemonSet{}).
-		Owns(&appsv1.DaemonSet{}).
-		Named("ebpfmonitor").
+		For(&ebpfv1alpha1.EbpfDaemonSet{}).
+    Owns(&appsv1.DaemonSet{}).
+		Named("ebpfdaemonset").
 		Complete(r)
 }
 
-func (r *EbpfDaemonSetReconciler) DaemonSetForEbpf(ebpfds *ebpfdsv1alpha1.EbpfDaemonSet) (*appsv1.DaemonSet, error) {
+func (r *EbpfDaemonSetReconciler) DaemonSetForEbpf(ebpfds *ebpfv1alpha1.EbpfDaemonSet) (*appsv1.DaemonSet, error) {
 	label := map[string]string{
 		"app": ebpfds.Name,
 	}
@@ -173,7 +192,7 @@ func (r *EbpfDaemonSetReconciler) DaemonSetForEbpf(ebpfds *ebpfdsv1alpha1.EbpfDa
 		},
 	}
 
-	if err := ctrl.SetControllerReference(ebpfds, ds, r.scheme); err != nil {
+	if err := ctrl.SetControllerReference(ebpfds, ds, r.Scheme); err != nil {
 		return nil, err
 	}
 	return ds, nil
