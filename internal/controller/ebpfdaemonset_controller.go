@@ -67,10 +67,12 @@ func (r *EbpfDaemonSetReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 
 	if len(ebpfDs.Status.Conditions) == 0 {
+
+		patch := client.MergeFrom(ebpfDs.DeepCopy())
 		meta.SetStatusCondition(&ebpfDs.Status.Conditions,
 			metav1.Condition{Type: "Available", Status: metav1.ConditionUnknown, Reason: "Reconciling", Message: "Starting reconciliation"})
 
-		if err := r.Status().Update(ctx, ebpfDs); err != nil {
+		if err := r.Status().Patch(ctx, ebpfDs, patch); err != nil {
 			log.Error(err, "Failed to update Status")
 			return ctrl.Result{}, err
 		}
@@ -83,14 +85,16 @@ func (r *EbpfDaemonSetReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 	// Manage the the DaemonSet
 	found := &appsv1.DaemonSet{}
-	if err := r.Get(ctx, types.NamespacedName{Name: ebpfDs.Name,Namespace: ebpfDs.Namespace}, found); err != nil && apierrors.IsNotFound(err) {
+	if err := r.Get(ctx, types.NamespacedName{Name: ebpfDs.Name, Namespace: ebpfDs.Namespace}, found); err != nil && apierrors.IsNotFound(err) {
 		ds, err := r.DaemonSetForEbpf(ebpfDs)
 		if err != nil {
 
 			log.Error(err, "Failed to define new DaemonSet resource for ebpf")
+			patch := client.MergeFrom(ebpfDs.DeepCopy())
+
 			meta.SetStatusCondition(&ebpfDs.Status.Conditions, metav1.Condition{Type: "Available", Status: metav1.ConditionFalse, Reason: "Reconciling", Message: fmt.Sprintf("Failed to create DaemonSet for cr (%s): (%s) ", ebpfDs.Name, err)})
 
-			if err := r.Status().Update(ctx, ebpfDs); err != nil {
+			if err := r.Status().Patch(ctx, ebpfDs, patch); err != nil {
 				log.Error(err, "Failed to update Status")
 				return ctrl.Result{}, err
 			}
@@ -116,25 +120,27 @@ func (r *EbpfDaemonSetReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, err
 	}
 
+	patch := client.MergeFrom(found.DeepCopy())
 	if r.CmpDaemonSets(found, desired, log) {
 		log.Info("Spec change detected, updating daemonset")
 
-		err := r.Update(ctx, found)
+		err := r.Patch(ctx, found, patch)
 		if err != nil {
 			log.Error(err, "Error updating daemonset")
 			return ctrl.Result{}, err
 		}
 
-    latest := &ebpfv1alpha1.EbpfDaemonSet{}
-    if err := r.Get(ctx, req.NamespacedName, latest); err != nil {
-      log.Error(err, "Failed to re-fetch EbpfDaemonSet before updating status")
-      return ctrl.Result{}, err
-    }
+		latest := &ebpfv1alpha1.EbpfDaemonSet{}
+		if err := r.Get(ctx, req.NamespacedName, latest); err != nil {
+			log.Error(err, "Failed to re-fetch EbpfDaemonSet before updating status")
+			return ctrl.Result{}, err
+		}
 
+		patch := client.MergeFrom(latest.DeepCopy())
 		meta.SetStatusCondition(&latest.Status.Conditions,
 			metav1.Condition{Type: "Available", Status: metav1.ConditionUnknown, Reason: "Reconciling",
 				Message: fmt.Sprintf("EbpfDaemonSet is updating")})
-		if err := r.Status().Update(ctx, latest); err != nil {
+		if err := r.Status().Patch(ctx, latest, patch); err != nil {
 			log.Error(err, "Failed to update status")
 			return ctrl.Result{}, err
 
@@ -142,18 +148,19 @@ func (r *EbpfDaemonSetReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 		return ctrl.Result{RequeueAfter: time.Minute}, nil
 	}
-  
-  latest := &ebpfv1alpha1.EbpfDaemonSet{}
-    if err := r.Get(ctx, req.NamespacedName, latest); err != nil {
-      log.Error(err, "Failed to re-fetch EbpfDaemonSet before updating status")
-      return ctrl.Result{}, err
-    }
 
+	latest := &ebpfv1alpha1.EbpfDaemonSet{}
+	if err := r.Get(ctx, req.NamespacedName, latest); err != nil {
+		log.Error(err, "Failed to re-fetch EbpfDaemonSet before updating status")
+		return ctrl.Result{}, err
+	}
+
+	patch = client.MergeFrom(latest.DeepCopy())
 	meta.SetStatusCondition(&latest.Status.Conditions,
 		metav1.Condition{Type: "Available", Status: metav1.ConditionTrue, Reason: "Reconciling",
 			Message: fmt.Sprintf("EbpfDaemonSet created successfully")})
 
-	if err := r.Status().Update(ctx, latest); err != nil {
+	if err := r.Status().Patch(ctx, latest, patch); err != nil {
 		log.Error(err, "Failed to update status")
 		return ctrl.Result{}, err
 	}
@@ -213,41 +220,41 @@ func (r *EbpfDaemonSetReconciler) DaemonSetForEbpf(ebpfds *ebpfv1alpha1.EbpfDaem
 	return ds, nil
 }
 
-func (r * EbpfDaemonSetReconciler) CmpDaemonSets(found , desires *appsv1.DaemonSet, log logr.Logger) bool{
-  diff := false
-  foundSpec := ebpfv1alpha1.ExtractRelevantSpec(found.Spec.Template.Spec)
+func (r *EbpfDaemonSetReconciler) CmpDaemonSets(found, desires *appsv1.DaemonSet, log logr.Logger) bool {
+	diff := false
+	foundSpec := ebpfv1alpha1.ExtractRelevantSpec(found.Spec.Template.Spec)
 
-  desiredSpec := ebpfv1alpha1.ExtractRelevantSpec(desires.Spec.Template.Spec)
+	desiredSpec := ebpfv1alpha1.ExtractRelevantSpec(desires.Spec.Template.Spec)
 
-  if !equality.Semantic.DeepEqual(foundSpec.Image, desiredSpec.Image){
-    log.Info("Image differs", "found", foundSpec.Image, "desired", desiredSpec.Image)
-    diff = true
-    found.Spec.Template.Spec.Containers[0].Image = desiredSpec.Image
-  }
-  if !equality.Semantic.DeepEqual(foundSpec.NodeSelector, desiredSpec.NodeSelector) {
-    log.Info("NodeSelector differs", "found", foundSpec.NodeSelector, "desired", desiredSpec.NodeSelector)
-    diff = true
-    found.Spec.Template.Spec.NodeSelector = desiredSpec.NodeSelector
-  }
-  if !equality.Semantic.DeepEqual(foundSpec.Resources, desiredSpec.Resources) {
-    log.Info("Resources differ", "found", foundSpec.Resources, "desired", desiredSpec.Resources)
-    diff = true
-    found.Spec.Template.Spec.Containers[0].Resources = desiredSpec.Resources
-  }
-  if !equality.Semantic.DeepEqual(foundSpec.RunPrivileged, desiredSpec.RunPrivileged) {
-    log.Info("RunPrivileged differs", "found", foundSpec.RunPrivileged, "desired", desiredSpec.RunPrivileged)
-    diff = true
-    for i, c := range found.Spec.Template.Spec.Containers {
-        if c.SecurityContext != nil {
-            found.Spec.Template.Spec.Containers[i].SecurityContext.Privileged = &desiredSpec.RunPrivileged
-        }
-    }
-  }
-  if !equality.Semantic.DeepEqual(foundSpec.Tolerations, desiredSpec.Tolerations) {
-    log.Info("Tolerations differ", "found", foundSpec.Tolerations, "desired", desiredSpec.Tolerations)
-    diff = true
-    found.Spec.Template.Spec.Tolerations = desiredSpec.Tolerations
-  }
+	if !equality.Semantic.DeepEqual(foundSpec.Image, desiredSpec.Image) {
+		log.Info("Image differs", "found", foundSpec.Image, "desired", desiredSpec.Image)
+		diff = true
+		found.Spec.Template.Spec.Containers[0].Image = desiredSpec.Image
+	}
+	if !equality.Semantic.DeepEqual(foundSpec.NodeSelector, desiredSpec.NodeSelector) {
+		log.Info("NodeSelector differs", "found", foundSpec.NodeSelector, "desired", desiredSpec.NodeSelector)
+		diff = true
+		found.Spec.Template.Spec.NodeSelector = desiredSpec.NodeSelector
+	}
+	if !equality.Semantic.DeepEqual(foundSpec.Resources, desiredSpec.Resources) {
+		log.Info("Resources differ", "found", foundSpec.Resources, "desired", desiredSpec.Resources)
+		diff = true
+		found.Spec.Template.Spec.Containers[0].Resources = desiredSpec.Resources
+	}
+	if !equality.Semantic.DeepEqual(foundSpec.RunPrivileged, desiredSpec.RunPrivileged) {
+		log.Info("RunPrivileged differs", "found", foundSpec.RunPrivileged, "desired", desiredSpec.RunPrivileged)
+		diff = true
+		for i, c := range found.Spec.Template.Spec.Containers {
+			if c.SecurityContext != nil {
+				found.Spec.Template.Spec.Containers[i].SecurityContext.Privileged = &desiredSpec.RunPrivileged
+			}
+		}
+	}
+	if !equality.Semantic.DeepEqual(foundSpec.Tolerations, desiredSpec.Tolerations) {
+		log.Info("Tolerations differ", "found", foundSpec.Tolerations, "desired", desiredSpec.Tolerations)
+		diff = true
+		found.Spec.Template.Spec.Tolerations = desiredSpec.Tolerations
+	}
 
-  return diff
-} 
+	return diff
+}
