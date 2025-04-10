@@ -14,7 +14,26 @@ spec:
     singular: ebpfdaemonset
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .spec.image
+      name: Image
+      type: string
+    - jsonPath: .status.conditions[0].type
+      name: ConditionType
+      type: string
+    - jsonPath: .status.conditions[0].status
+      name: ConditionStatus
+      type: string
+    - jsonPath: .status.conditions[0].reason
+      name: Reason
+      type: string
+    - jsonPath: .status.conditions[0].message
+      name: Message
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: EbpfDaemonSet is the Schema for the ebpfdaemonsets API.

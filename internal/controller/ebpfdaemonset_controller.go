@@ -124,10 +124,17 @@ func (r *EbpfDaemonSetReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			log.Error(err, "Error updating daemonset")
 			return ctrl.Result{}, err
 		}
-		meta.SetStatusCondition(&ebpfDs.Status.Conditions,
+
+    latest := &ebpfv1alpha1.EbpfDaemonSet{}
+    if err := r.Get(ctx, req.NamespacedName, latest); err != nil {
+      log.Error(err, "Failed to re-fetch EbpfDaemonSet before updating status")
+      return ctrl.Result{}, err
+    }
+
+		meta.SetStatusCondition(&latest.Status.Conditions,
 			metav1.Condition{Type: "Available", Status: metav1.ConditionUnknown, Reason: "Reconciling",
 				Message: fmt.Sprintf("EbpfDaemonSet is updating")})
-		if err := r.Status().Update(ctx, ebpfDs); err != nil {
+		if err := r.Status().Update(ctx, latest); err != nil {
 			log.Error(err, "Failed to update status")
 			return ctrl.Result{}, err
 

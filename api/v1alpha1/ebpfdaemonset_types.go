@@ -37,7 +37,12 @@ type EbpfDaemonSetStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-
+// +kubebuilder:printcolumn:name="Image",type=string,JSONPath=`.spec.image`
+// +kubebuilder:printcolumn:name="ConditionType",type=string,JSONPath=`.status.conditions[0].type`
+// +kubebuilder:printcolumn:name="ConditionStatus",type=string,JSONPath=`.status.conditions[0].status`
+// +kubebuilder:printcolumn:name="Reason",type=string,JSONPath=`.status.conditions[0].reason`
+// +kubebuilder:printcolumn:name="Message",type=string,JSONPath=`.status.conditions[0].message`
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 // EbpfDaemonSet is the Schema for the ebpfdaemonsets API.
 type EbpfDaemonSet struct {
 	metav1.TypeMeta   `json:",inline"`
