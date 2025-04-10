@@ -102,7 +102,7 @@ func (r *EbpfDaemonSetReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		}
 
 		log.Info("Creating new Daemonset", "Namespace", ds.Namespace, "Name", ds.Name)
-
+    
 		if err := r.Create(ctx, ds); err != nil {
 			log.Error(err, "Failed to create new Daemonset", "Namespace:", ds.Namespace, "Name", ds.Name)
 			return ctrl.Result{}, err
@@ -139,7 +139,7 @@ func (r *EbpfDaemonSetReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		patch := client.MergeFrom(latest.DeepCopy())
 		meta.SetStatusCondition(&latest.Status.Conditions,
 			metav1.Condition{Type: "Available", Status: metav1.ConditionUnknown, Reason: "Reconciling",
-				Message: fmt.Sprintf("EbpfDaemonSet is updating")})
+				Message: "EbpfDaemonSet is updating"})
 		if err := r.Status().Patch(ctx, latest, patch); err != nil {
 			log.Error(err, "Failed to update status")
 			return ctrl.Result{}, err
@@ -158,7 +158,7 @@ func (r *EbpfDaemonSetReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	patch = client.MergeFrom(latest.DeepCopy())
 	meta.SetStatusCondition(&latest.Status.Conditions,
 		metav1.Condition{Type: "Available", Status: metav1.ConditionTrue, Reason: "Reconciling",
-			Message: fmt.Sprintf("EbpfDaemonSet created successfully")})
+			Message: "EbpfDaemonSet created successfully"})
 
 	if err := r.Status().Patch(ctx, latest, patch); err != nil {
 		log.Error(err, "Failed to update status")
