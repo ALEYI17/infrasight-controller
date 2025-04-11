@@ -39,6 +39,7 @@ import (
 
 	ebpfv1alpha1 "github.com/ALEYI17/kube-ebpf-monitor/api/v1alpha1"
 	"github.com/ALEYI17/kube-ebpf-monitor/internal/controller"
+	webhookebpfv1alpha1 "github.com/ALEYI17/kube-ebpf-monitor/internal/webhook/v1alpha1"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -208,6 +209,13 @@ func main() {
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "EbpfDaemonSet")
 		os.Exit(1)
+	}
+	// nolint:goconst
+	if os.Getenv("ENABLE_WEBHOOKS") != "false" {
+		if err = webhookebpfv1alpha1.SetupEbpfDaemonSetWebhookWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "EbpfDaemonSet")
+			os.Exit(1)
+		}
 	}
 	// +kubebuilder:scaffold:builder
 
