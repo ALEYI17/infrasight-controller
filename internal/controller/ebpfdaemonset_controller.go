@@ -31,6 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	ebpfv1alpha1 "github.com/ALEYI17/kube-ebpf-monitor/api/v1alpha1"
@@ -101,8 +102,12 @@ func (r *EbpfDaemonSetReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			return ctrl.Result{}, err
 		}
 
+		if err := controllerutil.SetOwnerReference(ebpfDs, ds, r.Scheme); err != nil {
+			log.Error(err, "Unable to SetOwnerReference")
+			return ctrl.Result{}, err
+		}
 		log.Info("Creating new Daemonset", "Namespace", ds.Namespace, "Name", ds.Name)
-    
+
 		if err := r.Create(ctx, ds); err != nil {
 			log.Error(err, "Failed to create new Daemonset", "Namespace:", ds.Namespace, "Name", ds.Name)
 			return ctrl.Result{}, err

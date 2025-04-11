@@ -11,7 +11,7 @@ spec:
     kubernetes.io/os: linux
   resources:
     limits:
-      cpu: "700m"
+      cpu: "600m"
       memory: "256Mi"
     requests:
       cpu: "100m"
