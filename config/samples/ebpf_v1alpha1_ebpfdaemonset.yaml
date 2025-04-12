@@ -8,12 +8,5 @@ metadata:
 spec:
   image: alejandrosalamanca17/knative-example-native:latest
   nodeSelector:
-    kubernetes.io/os: linux
-  resources:
-    limits:
-      cpu: "600m"
-      memory: "256Mi"
-    requests:
-      cpu: "100m"
-      memory: "128Mi"
+    kubernetes.io/os: linux 
   runPrivileged: true

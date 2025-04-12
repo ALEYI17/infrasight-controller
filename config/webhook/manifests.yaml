@@ -1,0 +1,52 @@
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: mutating-webhook-configuration
+webhooks:
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /mutate-ebpf-monitoring-dev-v1alpha1-ebpfdaemonset
+  failurePolicy: Fail
+  name: mebpfdaemonset-v1alpha1.kb.io
+  rules:
+  - apiGroups:
+    - ebpf.monitoring.dev
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - ebpfdaemonsets
+  sideEffects: None
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: validating-webhook-configuration
+webhooks:
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-ebpf-monitoring-dev-v1alpha1-ebpfdaemonset
+  failurePolicy: Fail
+  name: vebpfdaemonset-v1alpha1.kb.io
+  rules:
+  - apiGroups:
+    - ebpf.monitoring.dev
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - ebpfdaemonsets
+  sideEffects: None

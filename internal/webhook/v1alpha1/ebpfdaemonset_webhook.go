@@ -20,13 +20,17 @@ import (
 	"context"
 	"fmt"
 
+	ebpfv1alpha1 "github.com/ALEYI17/kube-ebpf-monitor/api/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
-
-	ebpfv1alpha1 "github.com/ALEYI17/kube-ebpf-monitor/api/v1alpha1"
 )
 
 // nolint:unused
@@ -51,7 +55,6 @@ func SetupEbpfDaemonSetWebhookWithManager(mgr ctrl.Manager) error {
 // NOTE: The +kubebuilder:object:generate=false marker prevents controller-gen from generating DeepCopy methods,
 // as it is used only for temporary operations and does not need to be deeply copied.
 type EbpfDaemonSetCustomDefaulter struct {
-	// TODO(user): Add more fields as needed for defaulting
 }
 
 var _ webhook.CustomDefaulter = &EbpfDaemonSetCustomDefaulter{}
@@ -65,8 +68,26 @@ func (d *EbpfDaemonSetCustomDefaulter) Default(ctx context.Context, obj runtime.
 	}
 	ebpfdaemonsetlog.Info("Defaulting for EbpfDaemonSet", "name", ebpfdaemonset.GetName())
 
-	// TODO(user): fill in your defaulting logic.
+  if ebpfdaemonset.Spec.Image == ""{
+    ebpfdaemonset.Spec.Image = "alejandrosalamanca17/knative-example-native:latest"
+  }
 
+  if ebpfdaemonset.Spec.NodeSelector == nil{
+    ebpfdaemonset.Spec.NodeSelector = map[string]string{"kubernetes.io/os": "linux"}
+  }
+
+  if ebpfdaemonset.Spec.Resources.Limits == nil && ebpfdaemonset.Spec.Resources.Requests == nil{
+    ebpfdaemonset.Spec.Resources = corev1.ResourceRequirements{
+      Requests: corev1.ResourceList{
+        corev1.ResourceCPU : resource.MustParse("100m"),
+        corev1.ResourceMemory : resource.MustParse("128Mi"),
+      },
+      Limits: corev1.ResourceList{
+        corev1.ResourceCPU : resource.MustParse("500m"),
+        corev1.ResourceMemory: resource.MustParse("512Mi"),
+      },
+    } 
+  }
 	return nil
 }
 
@@ -81,7 +102,6 @@ func (d *EbpfDaemonSetCustomDefaulter) Default(ctx context.Context, obj runtime.
 // NOTE: The +kubebuilder:object:generate=false marker prevents controller-gen from generating DeepCopy methods,
 // as this struct is used only for temporary operations and does not need to be deeply copied.
 type EbpfDaemonSetCustomValidator struct {
-	// TODO(user): Add more fields as needed for validation
 }
 
 var _ webhook.CustomValidator = &EbpfDaemonSetCustomValidator{}
@@ -94,9 +114,8 @@ func (v *EbpfDaemonSetCustomValidator) ValidateCreate(ctx context.Context, obj r
 	}
 	ebpfdaemonsetlog.Info("Validation for EbpfDaemonSet upon creation", "name", ebpfdaemonset.GetName())
 
-	// TODO(user): fill in your validation logic upon object creation.
 
-	return nil, nil
+	return nil, validateEbpfDaemonset(ebpfdaemonset)
 }
 
 // ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type EbpfDaemonSet.
@@ -107,9 +126,7 @@ func (v *EbpfDaemonSetCustomValidator) ValidateUpdate(ctx context.Context, oldOb
 	}
 	ebpfdaemonsetlog.Info("Validation for EbpfDaemonSet upon update", "name", ebpfdaemonset.GetName())
 
-	// TODO(user): fill in your validation logic upon object update.
-
-	return nil, nil
+	return nil, validateEbpfDaemonset(ebpfdaemonset)
 }
 
 // ValidateDelete implements webhook.CustomValidator so a webhook will be registered for the type EbpfDaemonSet.
@@ -123,4 +140,72 @@ func (v *EbpfDaemonSetCustomValidator) ValidateDelete(ctx context.Context, obj r
 	// TODO(user): fill in your validation logic upon object deletion.
 
 	return nil, nil
+}
+
+func validateEbpfDaemonset(ebpfds *ebpfv1alpha1.EbpfDaemonSet) error{
+  var allErrs field.ErrorList
+
+  if err := validateImage(ebpfds);err !=nil{
+    allErrs = append(allErrs, err)
+  }
+
+  if err := validateResources(ebpfds);err != nil {
+    allErrs = append(allErrs, *err...)
+  }
+  
+  if err := validateNodeSelector(ebpfds); err != nil{
+    allErrs = append(allErrs, err)
+  }
+
+  if len(allErrs) == 0 {
+    return nil
+  }
+
+  return apierrors.NewInvalid(schema.GroupKind{
+    Group:"ebpf.monitoring.dev",
+    Kind: "EbpfDaemonSet",
+  },
+  ebpfds.Name, allErrs)
+}
+
+func validateImage(ebpfds *ebpfv1alpha1.EbpfDaemonSet) *field.Error{
+  if ebpfds.Spec.Image == ""{
+    return field.Required(field.NewPath("spec").Child("image"), "Image not provide")
+  }
+
+  return nil
+}
+
+func validateResources(ebpfds *ebpfv1alpha1.EbpfDaemonSet) *field.ErrorList{
+  var errs field.ErrorList
+  
+  resPath := field.NewPath("spec").Child("resources").Child("requests")
+  if cpuReq, ok := ebpfds.Spec.Resources.Requests[corev1.ResourceCPU]; ok {
+		if cpuLim, ok := ebpfds.Spec.Resources.Limits[corev1.ResourceCPU]; ok && cpuReq.Cmp(cpuLim) > 0 {
+      errs = append(errs,field.Forbidden(resPath.Key(string(corev1.ResourceCPU)), "Cpu Request > Cpu Limits")) 
+		}
+	}
+
+  if memReq, ok := ebpfds.Spec.Resources.Requests[corev1.ResourceMemory]; ok {
+		if memLim, ok := ebpfds.Spec.Resources.Limits[corev1.ResourceMemory]; ok && memReq.Cmp(memLim) > 0 {
+			errs = append(errs, field.Forbidden(resPath.Key(string(corev1.ResourceMemory)), "Memory request cannot exceed memory limit"))
+		}
+	}
+  
+  if len(errs) == 0{
+    return nil
+  }
+  return &errs
+}
+
+func validateNodeSelector(ebpfds *ebpfv1alpha1.EbpfDaemonSet) *field.Error{
+  
+  for key,value := range ebpfds.Spec.NodeSelector {
+
+    if key == "kubernetes.io/os" && value != "linux"{
+      return field.Forbidden(field.NewPath("spec").Child("nodeSelector"), "Ebpf only workls on linux nodes")
+    }
+  }
+
+  return nil
 }
