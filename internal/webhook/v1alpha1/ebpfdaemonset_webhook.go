@@ -68,26 +68,26 @@ func (d *EbpfDaemonSetCustomDefaulter) Default(ctx context.Context, obj runtime.
 	}
 	ebpfdaemonsetlog.Info("Defaulting for EbpfDaemonSet", "name", ebpfdaemonset.GetName())
 
-  if ebpfdaemonset.Spec.Image == ""{
-    ebpfdaemonset.Spec.Image = "alejandrosalamanca17/knative-example-native:latest"
-  }
+	if ebpfdaemonset.Spec.Image == "" {
+		ebpfdaemonset.Spec.Image = "alejandrosalamanca17/knative-example-native:latest"
+	}
 
-  if ebpfdaemonset.Spec.NodeSelector == nil{
-    ebpfdaemonset.Spec.NodeSelector = map[string]string{"kubernetes.io/os": "linux"}
-  }
+	if ebpfdaemonset.Spec.NodeSelector == nil {
+		ebpfdaemonset.Spec.NodeSelector = map[string]string{"kubernetes.io/os": "linux"}
+	}
 
-  if ebpfdaemonset.Spec.Resources.Limits == nil && ebpfdaemonset.Spec.Resources.Requests == nil{
-    ebpfdaemonset.Spec.Resources = corev1.ResourceRequirements{
-      Requests: corev1.ResourceList{
-        corev1.ResourceCPU : resource.MustParse("100m"),
-        corev1.ResourceMemory : resource.MustParse("128Mi"),
-      },
-      Limits: corev1.ResourceList{
-        corev1.ResourceCPU : resource.MustParse("500m"),
-        corev1.ResourceMemory: resource.MustParse("512Mi"),
-      },
-    } 
-  }
+	if ebpfdaemonset.Spec.Resources.Limits == nil && ebpfdaemonset.Spec.Resources.Requests == nil {
+		ebpfdaemonset.Spec.Resources = corev1.ResourceRequirements{
+			Requests: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse("100m"),
+				corev1.ResourceMemory: resource.MustParse("128Mi"),
+			},
+			Limits: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse("500m"),
+				corev1.ResourceMemory: resource.MustParse("512Mi"),
+			},
+		}
+	}
 	return nil
 }
 
@@ -113,7 +113,6 @@ func (v *EbpfDaemonSetCustomValidator) ValidateCreate(ctx context.Context, obj r
 		return nil, fmt.Errorf("expected a EbpfDaemonSet object but got %T", obj)
 	}
 	ebpfdaemonsetlog.Info("Validation for EbpfDaemonSet upon creation", "name", ebpfdaemonset.GetName())
-
 
 	return nil, validateEbpfDaemonset(ebpfdaemonset)
 }
@@ -142,70 +141,70 @@ func (v *EbpfDaemonSetCustomValidator) ValidateDelete(ctx context.Context, obj r
 	return nil, nil
 }
 
-func validateEbpfDaemonset(ebpfds *ebpfv1alpha1.EbpfDaemonSet) error{
-  var allErrs field.ErrorList
+func validateEbpfDaemonset(ebpfds *ebpfv1alpha1.EbpfDaemonSet) error {
+	var allErrs field.ErrorList
 
-  if err := validateImage(ebpfds);err !=nil{
-    allErrs = append(allErrs, err)
-  }
+	if err := validateImage(ebpfds); err != nil {
+		allErrs = append(allErrs, err)
+	}
 
-  if err := validateResources(ebpfds);err != nil {
-    allErrs = append(allErrs, *err...)
-  }
-  
-  if err := validateNodeSelector(ebpfds); err != nil{
-    allErrs = append(allErrs, err)
-  }
+	if err := validateResources(ebpfds); err != nil {
+		allErrs = append(allErrs, *err...)
+	}
 
-  if len(allErrs) == 0 {
-    return nil
-  }
+	if err := validateNodeSelector(ebpfds); err != nil {
+		allErrs = append(allErrs, err)
+	}
 
-  return apierrors.NewInvalid(schema.GroupKind{
-    Group:"ebpf.monitoring.dev",
-    Kind: "EbpfDaemonSet",
-  },
-  ebpfds.Name, allErrs)
+	if len(allErrs) == 0 {
+		return nil
+	}
+
+	return apierrors.NewInvalid(schema.GroupKind{
+		Group: "ebpf.monitoring.dev",
+		Kind:  "EbpfDaemonSet",
+	},
+		ebpfds.Name, allErrs)
 }
 
-func validateImage(ebpfds *ebpfv1alpha1.EbpfDaemonSet) *field.Error{
-  if ebpfds.Spec.Image == ""{
-    return field.Required(field.NewPath("spec").Child("image"), "Image not provide")
-  }
+func validateImage(ebpfds *ebpfv1alpha1.EbpfDaemonSet) *field.Error {
+	if ebpfds.Spec.Image == "" {
+		return field.Required(field.NewPath("spec").Child("image"), "Image not provide")
+	}
 
-  return nil
+	return nil
 }
 
-func validateResources(ebpfds *ebpfv1alpha1.EbpfDaemonSet) *field.ErrorList{
-  var errs field.ErrorList
-  
-  resPath := field.NewPath("spec").Child("resources").Child("requests")
-  if cpuReq, ok := ebpfds.Spec.Resources.Requests[corev1.ResourceCPU]; ok {
+func validateResources(ebpfds *ebpfv1alpha1.EbpfDaemonSet) *field.ErrorList {
+	var errs field.ErrorList
+
+	resPath := field.NewPath("spec").Child("resources").Child("requests")
+	if cpuReq, ok := ebpfds.Spec.Resources.Requests[corev1.ResourceCPU]; ok {
 		if cpuLim, ok := ebpfds.Spec.Resources.Limits[corev1.ResourceCPU]; ok && cpuReq.Cmp(cpuLim) > 0 {
-      errs = append(errs,field.Forbidden(resPath.Key(string(corev1.ResourceCPU)), "Cpu Request > Cpu Limits")) 
+			errs = append(errs, field.Forbidden(resPath.Key(string(corev1.ResourceCPU)), "Cpu Request > Cpu Limits"))
 		}
 	}
 
-  if memReq, ok := ebpfds.Spec.Resources.Requests[corev1.ResourceMemory]; ok {
+	if memReq, ok := ebpfds.Spec.Resources.Requests[corev1.ResourceMemory]; ok {
 		if memLim, ok := ebpfds.Spec.Resources.Limits[corev1.ResourceMemory]; ok && memReq.Cmp(memLim) > 0 {
 			errs = append(errs, field.Forbidden(resPath.Key(string(corev1.ResourceMemory)), "Memory request cannot exceed memory limit"))
 		}
 	}
-  
-  if len(errs) == 0{
-    return nil
-  }
-  return &errs
+
+	if len(errs) == 0 {
+		return nil
+	}
+	return &errs
 }
 
-func validateNodeSelector(ebpfds *ebpfv1alpha1.EbpfDaemonSet) *field.Error{
-  
-  for key,value := range ebpfds.Spec.NodeSelector {
+func validateNodeSelector(ebpfds *ebpfv1alpha1.EbpfDaemonSet) *field.Error {
 
-    if key == "kubernetes.io/os" && value != "linux"{
-      return field.Forbidden(field.NewPath("spec").Child("nodeSelector"), "Ebpf only workls on linux nodes")
-    }
-  }
+	for key, value := range ebpfds.Spec.NodeSelector {
 
-  return nil
+		if key == "kubernetes.io/os" && value != "linux" {
+			return field.Forbidden(field.NewPath("spec").Child("nodeSelector"), "Ebpf only workls on linux nodes")
+		}
+	}
+
+	return nil
 }
