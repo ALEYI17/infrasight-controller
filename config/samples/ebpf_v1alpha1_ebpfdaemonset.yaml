@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: ebpfdaemonset-sample
 spec:
-  image: alejandrosalamanca17/knative-example-native:latest
+  image: alejandrosalamanca17/ebpf-loader:latest
   nodeSelector:
     kubernetes.io/os: linux 
   runPrivileged: true

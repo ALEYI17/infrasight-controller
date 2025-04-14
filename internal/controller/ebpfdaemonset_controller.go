@@ -182,10 +182,27 @@ func (r *EbpfDaemonSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
+func newHostPathType(t string) *corev1.HostPathType {
+    typ := corev1.HostPathType(t)
+    return &typ
+}
+
 func (r *EbpfDaemonSetReconciler) DaemonSetForEbpf(ebpfds *ebpfv1alpha1.EbpfDaemonSet) (*appsv1.DaemonSet, error) {
 	label := map[string]string{
 		"app": ebpfds.Name,
 	}
+
+  volumes := []corev1.Volume{
+    {
+        Name: "debugfs",
+        VolumeSource: corev1.VolumeSource{
+            HostPath: &corev1.HostPathVolumeSource{
+                Path: "/sys/kernel/debug",
+                Type: newHostPathType("Directory"),
+            },
+        },
+    },
+  }
 
 	ds := &appsv1.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -208,12 +225,20 @@ func (r *EbpfDaemonSetReconciler) DaemonSetForEbpf(ebpfds *ebpfv1alpha1.EbpfDaem
 							Image: ebpfds.Spec.Image,
 							SecurityContext: &corev1.SecurityContext{
 								Privileged: &ebpfds.Spec.RunPrivileged,
+                
 							},
+              VolumeMounts: []corev1.VolumeMount{
+                {
+                  Name: "debugfs",
+                  MountPath: "/sys/kernel/debug",
+                },
+              },
 							Resources: ebpfds.Spec.Resources,
 						},
 					},
 					Tolerations:  ebpfds.Spec.Tolerations,
 					NodeSelector: ebpfds.Spec.NodeSelector,
+          Volumes: volumes,
 				},
 			},
 		},
