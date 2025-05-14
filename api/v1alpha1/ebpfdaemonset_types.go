@@ -23,11 +23,14 @@ import (
 
 // EbpfDaemonSetSpec defines the desired state of EbpfDaemonSet.
 type EbpfDaemonSetSpec struct {
-	Image         string                      `json:"image"`
+	Image         string                      `json:"image,omitempty"`
 	NodeSelector  map[string]string           `json:"nodeSelector,omitempty"`
 	Tolerations   []corev1.Toleration         `json:"tolerations,omitempty"`
 	Resources     corev1.ResourceRequirements `json:"resources,omitempty"`
 	RunPrivileged bool                        `json:"runPrivileged,omitempty"`
+	EnableProbes  []string                    `json:"enableProbes"`
+	ServerAddress string                      `json:"serverAddress"`
+	ServerPort    string                      `json:"serverPort"`
 }
 
 // EbpfDaemonSetStatus defines the observed state of EbpfDaemonSet.

@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -183,8 +184,8 @@ func (r *EbpfDaemonSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 func newHostPathType(t string) *corev1.HostPathType {
-    typ := corev1.HostPathType(t)
-    return &typ
+	typ := corev1.HostPathType(t)
+	return &typ
 }
 
 func (r *EbpfDaemonSetReconciler) DaemonSetForEbpf(ebpfds *ebpfv1alpha1.EbpfDaemonSet) (*appsv1.DaemonSet, error) {
@@ -192,17 +193,17 @@ func (r *EbpfDaemonSetReconciler) DaemonSetForEbpf(ebpfds *ebpfv1alpha1.EbpfDaem
 		"app": ebpfds.Name,
 	}
 
-  volumes := []corev1.Volume{
-    {
-        Name: "debugfs",
-        VolumeSource: corev1.VolumeSource{
-            HostPath: &corev1.HostPathVolumeSource{
-                Path: "/sys/kernel/debug",
-                Type: newHostPathType("Directory"),
-            },
-        },
-    },
-  }
+	volumes := []corev1.Volume{
+		{
+			Name: "debugfs",
+			VolumeSource: corev1.VolumeSource{
+				HostPath: &corev1.HostPathVolumeSource{
+					Path: "/sys/kernel/debug",
+					Type: newHostPathType("Directory"),
+				},
+			},
+		},
+	}
 
 	ds := &appsv1.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -225,20 +226,33 @@ func (r *EbpfDaemonSetReconciler) DaemonSetForEbpf(ebpfds *ebpfv1alpha1.EbpfDaem
 							Image: ebpfds.Spec.Image,
 							SecurityContext: &corev1.SecurityContext{
 								Privileged: &ebpfds.Spec.RunPrivileged,
-                
 							},
-              VolumeMounts: []corev1.VolumeMount{
-                {
-                  Name: "debugfs",
-                  MountPath: "/sys/kernel/debug",
-                },
-              },
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      "debugfs",
+									MountPath: "/sys/kernel/debug",
+								},
+							},
 							Resources: ebpfds.Spec.Resources,
+							Env: []corev1.EnvVar{
+								{
+									Name:  "TRACER",
+									Value: strings.Join(ebpfds.Spec.EnableProbes, ","),
+								},
+								{
+									Name:  "SERVER_ADDR",
+									Value: ebpfds.Spec.ServerAddress,
+								},
+								{
+									Name:  "SERVER_PORT",
+									Value: ebpfds.Spec.ServerPort,
+								},
+							},
 						},
 					},
 					Tolerations:  ebpfds.Spec.Tolerations,
 					NodeSelector: ebpfds.Spec.NodeSelector,
-          Volumes: volumes,
+					Volumes:      volumes,
 				},
 			},
 		},
@@ -286,5 +300,34 @@ func (r *EbpfDaemonSetReconciler) CmpDaemonSets(found, desires *appsv1.DaemonSet
 		found.Spec.Template.Spec.Tolerations = desiredSpec.Tolerations
 	}
 
+	if !equality.Semantic.DeepEqual(foundSpec.EnabledProbes, desiredSpec.EnabledProbes) {
+		log.Info("EnabledProbes differ", "found", foundSpec.EnabledProbes, "desired", desiredSpec.EnabledProbes)
+		diff = true
+		updateEnvVar(&found.Spec.Template.Spec.Containers[0], "TRACER", strings.Join(desiredSpec.EnabledProbes, ","))
+	}
+
+	if !equality.Semantic.DeepEqual(foundSpec.ServerAddress, desiredSpec.ServerAddress) {
+		log.Info("ServerAddress differs", "found", foundSpec.ServerAddress, "desired", desiredSpec.ServerAddress)
+		diff = true
+		updateEnvVar(&found.Spec.Template.Spec.Containers[0], "SERVER_ADDR", desiredSpec.ServerAddress)
+	}
+
+	if !equality.Semantic.DeepEqual(foundSpec.ServerPort, desiredSpec.ServerPort) {
+		log.Info("ServerPort differs", "found", foundSpec.ServerPort, "desired", desiredSpec.ServerPort)
+		diff = true
+		updateEnvVar(&found.Spec.Template.Spec.Containers[0], "SERVER_PORT", desiredSpec.ServerPort)
+	}
 	return diff
+}
+func updateEnvVar(container *corev1.Container, name, value string) {
+	for i, env := range container.Env {
+		if env.Name == name {
+			container.Env[i].Value = value
+			return
+		}
+	}
+	container.Env = append(container.Env, corev1.EnvVar{
+		Name:  name,
+		Value: value,
+	})
 }

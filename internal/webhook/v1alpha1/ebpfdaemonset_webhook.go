@@ -19,6 +19,8 @@ package v1alpha1
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
 
 	ebpfv1alpha1 "github.com/ALEYI17/kube-ebpf-monitor/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -26,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -44,8 +47,6 @@ func SetupEbpfDaemonSetWebhookWithManager(mgr ctrl.Manager) error {
 		WithDefaulter(&EbpfDaemonSetCustomDefaulter{}).
 		Complete()
 }
-
-// TODO(user): EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 
 // +kubebuilder:webhook:path=/mutate-ebpf-monitoring-dev-v1alpha1-ebpfdaemonset,mutating=true,failurePolicy=fail,sideEffects=None,groups=ebpf.monitoring.dev,resources=ebpfdaemonsets,verbs=create;update,versions=v1alpha1,name=mebpfdaemonset-v1alpha1.kb.io,admissionReviewVersions=v1
 
@@ -87,6 +88,10 @@ func (d *EbpfDaemonSetCustomDefaulter) Default(ctx context.Context, obj runtime.
 				corev1.ResourceMemory: resource.MustParse("512Mi"),
 			},
 		}
+	}
+
+	if !ebpfdaemonset.Spec.RunPrivileged {
+		ebpfdaemonset.Spec.RunPrivileged = true
 	}
 	return nil
 }
@@ -136,8 +141,6 @@ func (v *EbpfDaemonSetCustomValidator) ValidateDelete(ctx context.Context, obj r
 	}
 	ebpfdaemonsetlog.Info("Validation for EbpfDaemonSet upon deletion", "name", ebpfdaemonset.GetName())
 
-	// TODO(user): fill in your validation logic upon object deletion.
-
 	return nil, nil
 }
 
@@ -153,6 +156,18 @@ func validateEbpfDaemonset(ebpfds *ebpfv1alpha1.EbpfDaemonSet) error {
 	}
 
 	if err := validateNodeSelector(ebpfds); err != nil {
+		allErrs = append(allErrs, err)
+	}
+
+	if err := validateEnableProbes(ebpfds); err != nil {
+		allErrs = append(allErrs, *err...)
+	}
+
+	if err := ValidateServerAddr(ebpfds); err != nil {
+		allErrs = append(allErrs, err)
+	}
+
+	if err := ValidateServerPort(ebpfds); err != nil {
 		allErrs = append(allErrs, err)
 	}
 
@@ -206,5 +221,61 @@ func validateNodeSelector(ebpfds *ebpfv1alpha1.EbpfDaemonSet) *field.Error {
 		}
 	}
 
+	return nil
+}
+
+func validateEnableProbes(ebpfds *ebpfv1alpha1.EbpfDaemonSet) *field.ErrorList {
+	var errs field.ErrorList
+
+	resPath := field.NewPath("spec").Child("EnableProbes")
+	if len(ebpfds.Spec.EnableProbes) == 0 {
+		errs = append(errs, field.Required(resPath, "at least one probe must be specified"))
+	}
+
+	allowed := sets.New[string]("open", "execve")
+
+	seen := sets.New[string]()
+
+	for i, probe := range ebpfds.Spec.EnableProbes {
+		if !allowed.Has(probe) {
+			errs = append(errs, field.NotSupported(resPath.Index(i), probe, sets.List(allowed)))
+		}
+
+		if seen.Has(probe) {
+			errs = append(errs, field.Duplicate(resPath.Index(i), probe))
+		} else {
+			seen.Insert(probe)
+		}
+
+		if probe != strings.ToLower(probe) {
+			errs = append(errs, field.Invalid(resPath.Index(i), probe, "probes must be lowercase"))
+		}
+	}
+
+	if len(errs) == 0 {
+		return nil
+	}
+	return &errs
+}
+
+func ValidateServerAddr(ebpfds *ebpfv1alpha1.EbpfDaemonSet) *field.Error {
+
+	if ebpfds.Spec.ServerAddress == "" {
+		return field.Required(field.NewPath("spec").Child("serverAddress"), "server address should be provided")
+	}
+
+	return nil
+}
+
+func ValidateServerPort(ebpfds *ebpfv1alpha1.EbpfDaemonSet) *field.Error {
+
+	if ebpfds.Spec.ServerPort == "" {
+		return field.Required(field.NewPath("spec").Child("serverPort"), "server port should be provided")
+	}
+
+	port, err := strconv.Atoi(ebpfds.Spec.ServerPort)
+	if err != nil || port < 1 || port > 65535 {
+		return field.Invalid(field.NewPath("spec").Child("serverPort"), ebpfds.Spec.ServerPort, "must be a valid port number (1–65535)")
+	}
 	return nil
 }

@@ -58,6 +58,10 @@ spec:
           spec:
             description: EbpfDaemonSetSpec defines the desired state of EbpfDaemonSet.
             properties:
+              enableProbes:
+                items:
+                  type: string
+                type: array
               image:
                 type: string
               nodeSelector:
@@ -125,6 +129,10 @@ spec:
                 type: object
               runPrivileged:
                 type: boolean
+              serverAddress:
+                type: string
+              serverPort:
+                type: string
               tolerations:
                 items:
                   description: |-
@@ -164,7 +172,9 @@ spec:
                   type: object
                 type: array
             required:
-            - image
+            - enableProbes
+            - serverAddress
+            - serverPort
             type: object
           status:
             description: EbpfDaemonSetStatus defines the observed state of EbpfDaemonSet.
