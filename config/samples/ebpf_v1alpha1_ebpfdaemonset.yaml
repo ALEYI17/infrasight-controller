@@ -6,11 +6,10 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: ebpfdaemonset-sample
 spec:
-  image: alejandrosalamanca17/ebpf-loader:latest
+  image: ghcr.io/aleyi17/ebpf_loader:latest
   nodeSelector:
     kubernetes.io/os: linux 
   enableProbes:
-    - open
     - execve
   serverPort: "8080"
-  serverAddress: 10.0.0.1
+  serverAddress: monitor-ebpf-server

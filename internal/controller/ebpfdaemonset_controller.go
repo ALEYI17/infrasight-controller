@@ -247,6 +247,14 @@ func (r *EbpfDaemonSetReconciler) DaemonSetForEbpf(ebpfds *ebpfv1alpha1.EbpfDaem
 									Name:  "SERVER_PORT",
 									Value: ebpfds.Spec.ServerPort,
 								},
+                {
+                  Name: "NODE_NAME",
+                  ValueFrom: &corev1.EnvVarSource{
+                    FieldRef: &corev1.ObjectFieldSelector{
+                      FieldPath: "spec.nodeName",
+                    },
+                  },
+                },
 							},
 						},
 					},
