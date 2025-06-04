@@ -30,6 +30,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -203,6 +204,24 @@ func (r *EbpfDaemonSetReconciler) DaemonSetForEbpf(ebpfds *ebpfv1alpha1.EbpfDaem
 				},
 			},
 		},
+    {
+      Name: "var-run",
+      VolumeSource: corev1.VolumeSource{
+        HostPath: &corev1.HostPathVolumeSource{
+          Path: "/var/run",
+          Type: newHostPathType("Directory"),
+        },
+      },
+    },
+    {
+      Name: "host-run",
+      VolumeSource: corev1.VolumeSource{
+        HostPath: &corev1.HostPathVolumeSource{
+          Path: "/run",
+          Type: newHostPathType("Directory"),
+        },
+      },
+    },
 	}
 
 	ds := &appsv1.DaemonSet{
@@ -232,6 +251,16 @@ func (r *EbpfDaemonSetReconciler) DaemonSetForEbpf(ebpfds *ebpfv1alpha1.EbpfDaem
 									Name:      "debugfs",
 									MountPath: "/sys/kernel/debug",
 								},
+                {
+                  Name: "var-run",
+                  MountPath: "/var/run",
+                  ReadOnly: true,
+                },
+                {
+                  Name: "host-run",
+                  MountPath: "/run",
+                  ReadOnly: true,
+                },
 							},
 							Resources: ebpfds.Spec.Resources,
 							Env: []corev1.EnvVar{
@@ -258,6 +287,7 @@ func (r *EbpfDaemonSetReconciler) DaemonSetForEbpf(ebpfds *ebpfv1alpha1.EbpfDaem
 							},
 						},
 					},
+          AutomountServiceAccountToken: ptr.To(false),
 					Tolerations:  ebpfds.Spec.Tolerations,
 					NodeSelector: ebpfds.Spec.NodeSelector,
 					Volumes:      volumes,
