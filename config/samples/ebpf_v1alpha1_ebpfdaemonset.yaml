@@ -11,5 +11,6 @@ spec:
     kubernetes.io/os: linux 
   enableProbes:
     - execve
+    - open
   serverPort: "8080"
-  serverAddress: monitor-ebpf-server
+  serverAddress: ebpfplatform-ebpf-server
