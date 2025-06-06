@@ -204,24 +204,24 @@ func (r *EbpfDaemonSetReconciler) DaemonSetForEbpf(ebpfds *ebpfv1alpha1.EbpfDaem
 				},
 			},
 		},
-    {
-      Name: "var-run",
-      VolumeSource: corev1.VolumeSource{
-        HostPath: &corev1.HostPathVolumeSource{
-          Path: "/var/run",
-          Type: newHostPathType("Directory"),
-        },
-      },
-    },
-    {
-      Name: "host-run",
-      VolumeSource: corev1.VolumeSource{
-        HostPath: &corev1.HostPathVolumeSource{
-          Path: "/run",
-          Type: newHostPathType("Directory"),
-        },
-      },
-    },
+		{
+			Name: "var-run",
+			VolumeSource: corev1.VolumeSource{
+				HostPath: &corev1.HostPathVolumeSource{
+					Path: "/var/run",
+					Type: newHostPathType("Directory"),
+				},
+			},
+		},
+		{
+			Name: "host-run",
+			VolumeSource: corev1.VolumeSource{
+				HostPath: &corev1.HostPathVolumeSource{
+					Path: "/run",
+					Type: newHostPathType("Directory"),
+				},
+			},
+		},
 	}
 
 	ds := &appsv1.DaemonSet{
@@ -251,16 +251,16 @@ func (r *EbpfDaemonSetReconciler) DaemonSetForEbpf(ebpfds *ebpfv1alpha1.EbpfDaem
 									Name:      "debugfs",
 									MountPath: "/sys/kernel/debug",
 								},
-                {
-                  Name: "var-run",
-                  MountPath: "/var/run",
-                  ReadOnly: true,
-                },
-                {
-                  Name: "host-run",
-                  MountPath: "/run",
-                  ReadOnly: true,
-                },
+								{
+									Name:      "var-run",
+									MountPath: "/var/run",
+									ReadOnly:  true,
+								},
+								{
+									Name:      "host-run",
+									MountPath: "/run",
+									ReadOnly:  true,
+								},
 							},
 							Resources: ebpfds.Spec.Resources,
 							Env: []corev1.EnvVar{
@@ -276,21 +276,21 @@ func (r *EbpfDaemonSetReconciler) DaemonSetForEbpf(ebpfds *ebpfv1alpha1.EbpfDaem
 									Name:  "SERVER_PORT",
 									Value: ebpfds.Spec.ServerPort,
 								},
-                {
-                  Name: "NODE_NAME",
-                  ValueFrom: &corev1.EnvVarSource{
-                    FieldRef: &corev1.ObjectFieldSelector{
-                      FieldPath: "spec.nodeName",
-                    },
-                  },
-                },
+								{
+									Name: "NODE_NAME",
+									ValueFrom: &corev1.EnvVarSource{
+										FieldRef: &corev1.ObjectFieldSelector{
+											FieldPath: "spec.nodeName",
+										},
+									},
+								},
 							},
 						},
 					},
-          AutomountServiceAccountToken: ptr.To(false),
-					Tolerations:  ebpfds.Spec.Tolerations,
-					NodeSelector: ebpfds.Spec.NodeSelector,
-					Volumes:      volumes,
+					AutomountServiceAccountToken: ptr.To(false),
+					Tolerations:                  ebpfds.Spec.Tolerations,
+					NodeSelector:                 ebpfds.Spec.NodeSelector,
+					Volumes:                      volumes,
 				},
 			},
 		},
