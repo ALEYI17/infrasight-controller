@@ -10,7 +10,7 @@ spec:
   nodeSelector:
     kubernetes.io/os: linux 
   enableProbes:
-    - execve
-    - open
+    - connect
+    - accept
   serverPort: "8080"
   serverAddress: ebpfplatform-ebpf-server
