@@ -195,6 +195,8 @@ func (r *EbpfDaemonSetReconciler) DaemonSetForEbpf(ebpfds *ebpfv1alpha1.EbpfDaem
 	label := map[string]string{
 		"app": ebpfds.Name,
 	}
+  
+  annotations := map[string]string{}
 
 	volumes := []corev1.Volume{
 		{
@@ -235,6 +237,11 @@ func (r *EbpfDaemonSetReconciler) DaemonSetForEbpf(ebpfds *ebpfv1alpha1.EbpfDaem
         ContainerPort: int32(portNum),
         Protocol:      corev1.ProtocolTCP,
       })
+
+      annotations["prometheus.io/scrape"] = "true"
+	    annotations["prometheus.io/port"] = ebpfds.Spec.PrometheusPort
+	    annotations["prometheus.io/path"] = "/metrics"
+
     } else {
       fmt.Printf("error converting prometheusPort %q: %v\n", ebpfds.Spec.PrometheusPort, err)
     }
@@ -253,6 +260,7 @@ func (r *EbpfDaemonSetReconciler) DaemonSetForEbpf(ebpfds *ebpfv1alpha1.EbpfDaem
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: label,
+          Annotations: annotations,
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
