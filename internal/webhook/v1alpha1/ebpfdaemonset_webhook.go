@@ -77,6 +77,10 @@ func (d *EbpfDaemonSetCustomDefaulter) Default(ctx context.Context, obj runtime.
 		ebpfdaemonset.Spec.NodeSelector = map[string]string{"kubernetes.io/os": "linux"}
 	}
 
+  if ebpfdaemonset.Spec.PrometheusPort == ""{
+    ebpfdaemonset.Spec.PrometheusPort = "9090"
+  }
+
 	if ebpfdaemonset.Spec.Resources.Limits == nil && ebpfdaemonset.Spec.Resources.Requests == nil {
 		ebpfdaemonset.Spec.Resources = corev1.ResourceRequirements{
 			Requests: corev1.ResourceList{
@@ -170,6 +174,10 @@ func validateEbpfDaemonset(ebpfds *ebpfv1alpha1.EbpfDaemonSet) error {
 	if err := ValidateServerPort(ebpfds); err != nil {
 		allErrs = append(allErrs, err)
 	}
+
+  if err := ValidatePrometheusPort(ebpfds); err !=nil{
+    allErrs = append(allErrs, err)
+  }
 
 	if len(allErrs) == 0 {
 		return nil
@@ -278,4 +286,19 @@ func ValidateServerPort(ebpfds *ebpfv1alpha1.EbpfDaemonSet) *field.Error {
 		return field.Invalid(field.NewPath("spec").Child("serverPort"), ebpfds.Spec.ServerPort, "must be a valid port number (1–65535)")
 	}
 	return nil
+}
+
+func ValidatePrometheusPort(ebpfds *ebpfv1alpha1.EbpfDaemonSet) *field.Error{
+  
+  if ebpfds.Spec.PrometheusPort == ""{
+    return field.Required(field.NewPath("spec").Child("prometheusPort"), "prometheus port should be provided") 
+  }
+
+  port , err := strconv.Atoi(ebpfds.Spec.PrometheusPort)
+
+  if err != nil || port < 1 || port >65535{
+    return field.Invalid(field.NewPath("spec").Child("serverPort"), ebpfds.Spec.ServerPort, "must be a valid port number (1-65535)")
+  }
+
+  return nil
 }

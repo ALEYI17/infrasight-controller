@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -190,6 +191,7 @@ func newHostPathType(t string) *corev1.HostPathType {
 }
 
 func (r *EbpfDaemonSetReconciler) DaemonSetForEbpf(ebpfds *ebpfv1alpha1.EbpfDaemonSet) (*appsv1.DaemonSet, error) {
+
 	label := map[string]string{
 		"app": ebpfds.Name,
 	}
@@ -223,6 +225,20 @@ func (r *EbpfDaemonSetReconciler) DaemonSetForEbpf(ebpfds *ebpfv1alpha1.EbpfDaem
 			},
 		},
 	}
+  
+  ports := []corev1.ContainerPort{}
+
+  if ebpfds.Spec.PrometheusPort != "" {
+    if portNum, err := strconv.Atoi(ebpfds.Spec.PrometheusPort); err == nil {
+      ports = append(ports, corev1.ContainerPort{
+        Name:          "metrics",
+        ContainerPort: int32(portNum),
+        Protocol:      corev1.ProtocolTCP,
+      })
+    } else {
+      fmt.Printf("error converting prometheusPort %q: %v\n", ebpfds.Spec.PrometheusPort, err)
+    }
+  }
 
 	ds := &appsv1.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -276,6 +292,10 @@ func (r *EbpfDaemonSetReconciler) DaemonSetForEbpf(ebpfds *ebpfv1alpha1.EbpfDaem
 									Name:  "SERVER_PORT",
 									Value: ebpfds.Spec.ServerPort,
 								},
+                {
+                  Name: "PROMETHEUS_PORT",
+                  Value: ebpfds.Spec.PrometheusPort, 
+                },
 								{
 									Name: "NODE_NAME",
 									ValueFrom: &corev1.EnvVarSource{
@@ -285,6 +305,7 @@ func (r *EbpfDaemonSetReconciler) DaemonSetForEbpf(ebpfds *ebpfv1alpha1.EbpfDaem
 									},
 								},
 							},
+              Ports: ports,
 						},
 					},
 					AutomountServiceAccountToken: ptr.To(false),

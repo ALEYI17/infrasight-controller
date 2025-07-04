@@ -31,6 +31,7 @@ type EbpfDaemonSetSpec struct {
 	EnableProbes  []string                    `json:"enableProbes"`
 	ServerAddress string                      `json:"serverAddress"`
 	ServerPort    string                      `json:"serverPort"`
+  PrometheusPort string                     `json:"prometheusPort,omitempty"`
 }
 
 // EbpfDaemonSetStatus defines the observed state of EbpfDaemonSet.

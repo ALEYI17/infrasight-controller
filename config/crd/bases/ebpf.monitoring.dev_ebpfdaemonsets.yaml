@@ -68,6 +68,8 @@ spec:
                 additionalProperties:
                   type: string
                 type: object
+              prometheusPort:
+                type: string
               resources:
                 description: ResourceRequirements describes the compute resource requirements.
                 properties:
