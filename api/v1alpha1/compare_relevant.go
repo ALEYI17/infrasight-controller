@@ -15,11 +15,12 @@ type Relevant struct {
 	EnabledProbes []string
 	ServerAddress string
 	ServerPort    string
+  PrometheusPort string
 }
 
 func ExtractRelevantSpec(podSpec corev1.PodSpec) Relevant {
 	envVar := podSpec.Containers[0].Env
-	var envTracer, envServAddr, envAddrPort string
+	var envTracer, envServAddr, envAddrPort, envPromPort string
 	for _, env := range envVar {
 		if env.Name == "TRACER" {
 			envTracer = env.Value
@@ -30,6 +31,9 @@ func ExtractRelevantSpec(podSpec corev1.PodSpec) Relevant {
 		if env.Name == "SERVER_PORT" {
 			envAddrPort = env.Value
 		}
+    if env.Name == "PROMETHEUS_PORT"{
+      envPromPort = env.Value
+    }
 	}
 	traces := strings.Split(envTracer, ",")
 
@@ -46,5 +50,6 @@ func ExtractRelevantSpec(podSpec corev1.PodSpec) Relevant {
 		EnabledProbes: traces,
 		ServerAddress: envServAddr,
 		ServerPort:    envAddrPort,
+    PrometheusPort: envPromPort,
 	}
 }

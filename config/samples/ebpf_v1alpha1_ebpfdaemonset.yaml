@@ -14,4 +14,4 @@ spec:
     - accept
   serverPort: "8080"
   serverAddress: ebpfplatform-ebpf-server
-  prometheusPort: "9092"
+  prometheusPort: "9089"

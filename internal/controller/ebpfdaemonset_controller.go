@@ -384,6 +384,18 @@ func (r *EbpfDaemonSetReconciler) CmpDaemonSets(found, desires *appsv1.DaemonSet
 		diff = true
 		updateEnvVar(&found.Spec.Template.Spec.Containers[0], "SERVER_PORT", desiredSpec.ServerPort)
 	}
+
+  if !equality.Semantic.DeepEqual(foundSpec.PrometheusPort, desiredSpec.PrometheusPort){
+    log.Info("prometheus port differs", "found",foundSpec.PrometheusPort, "desired",desiredSpec.PrometheusPort)
+    diff = true
+    updateEnvVar(&found.Spec.Template.Spec.Containers[0], "PROMETHEUS_PORT", desiredSpec.PrometheusPort)
+    found.Spec.Template.ObjectMeta.Annotations["prometheus.io/port"] = desiredSpec.PrometheusPort
+    
+    if portNum, err := strconv.Atoi(desiredSpec.PrometheusPort); err == nil {
+      found.Spec.Template.Spec.Containers[0].Ports[0].ContainerPort = int32(portNum)
+    }
+    
+  }
 	return diff
 }
 func updateEnvVar(container *corev1.Container, name, value string) {
