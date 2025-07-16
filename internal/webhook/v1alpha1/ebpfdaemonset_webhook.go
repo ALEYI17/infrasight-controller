@@ -240,7 +240,7 @@ func validateEnableProbes(ebpfds *ebpfv1alpha1.EbpfDaemonSet) *field.ErrorList {
 		errs = append(errs, field.Required(resPath, "at least one probe must be specified"))
 	}
 
-	allowed := sets.New[string]("open", "execve", "chmod", "connect", "accept","ptrace","mmap","mount")
+	allowed := sets.New[string]("open", "execve", "chmod", "connect", "accept","ptrace","mmap","mount","umount")
 
 	seen := sets.New[string]()
 
