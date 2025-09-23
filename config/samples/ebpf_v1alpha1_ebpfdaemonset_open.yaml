@@ -4,13 +4,13 @@ metadata:
   labels:
     app.kubernetes.io/name: kube-ebpf-monitor
     app.kubernetes.io/managed-by: kustomize
-  name: ebpfdaemonset-sample
+  name: ebpfdaemonset-sample-open
 spec:
   image: ghcr.io/aleyi17/ebpf_loader:latest
   nodeSelector:
     kubernetes.io/os: linux 
   enableProbes:
-    - syscallfreq
+    - open
   serverPort: "8080"
   serverAddress: infrasight-ebpf-server
   prometheusPort: "9089"

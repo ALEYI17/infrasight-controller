@@ -77,9 +77,9 @@ func (d *EbpfDaemonSetCustomDefaulter) Default(ctx context.Context, obj runtime.
 		ebpfdaemonset.Spec.NodeSelector = map[string]string{"kubernetes.io/os": "linux"}
 	}
 
-  if ebpfdaemonset.Spec.PrometheusPort == ""{
-    ebpfdaemonset.Spec.PrometheusPort = "9090"
-  }
+	if ebpfdaemonset.Spec.PrometheusPort == "" {
+		ebpfdaemonset.Spec.PrometheusPort = "9090"
+	}
 
 	if ebpfdaemonset.Spec.Resources.Limits == nil && ebpfdaemonset.Spec.Resources.Requests == nil {
 		ebpfdaemonset.Spec.Resources = corev1.ResourceRequirements{
@@ -175,9 +175,9 @@ func validateEbpfDaemonset(ebpfds *ebpfv1alpha1.EbpfDaemonSet) error {
 		allErrs = append(allErrs, err)
 	}
 
-  if err := ValidatePrometheusPort(ebpfds); err !=nil{
-    allErrs = append(allErrs, err)
-  }
+	if err := ValidatePrometheusPort(ebpfds); err != nil {
+		allErrs = append(allErrs, err)
+	}
 
 	if len(allErrs) == 0 {
 		return nil
@@ -240,7 +240,7 @@ func validateEnableProbes(ebpfds *ebpfv1alpha1.EbpfDaemonSet) *field.ErrorList {
 		errs = append(errs, field.Required(resPath, "at least one probe must be specified"))
 	}
 
-	allowed := sets.New[string]("open", "execve", "chmod", "connect", "accept","ptrace","mmap","mount","umount")
+	allowed := sets.New[string]("open", "execve", "chmod", "connect", "accept", "ptrace", "mmap", "mount", "umount", "resource", "syscallfreq")
 
 	seen := sets.New[string]()
 
@@ -288,17 +288,17 @@ func ValidateServerPort(ebpfds *ebpfv1alpha1.EbpfDaemonSet) *field.Error {
 	return nil
 }
 
-func ValidatePrometheusPort(ebpfds *ebpfv1alpha1.EbpfDaemonSet) *field.Error{
-  
-  if ebpfds.Spec.PrometheusPort == ""{
-    return field.Required(field.NewPath("spec").Child("prometheusPort"), "prometheus port should be provided") 
-  }
+func ValidatePrometheusPort(ebpfds *ebpfv1alpha1.EbpfDaemonSet) *field.Error {
 
-  port , err := strconv.Atoi(ebpfds.Spec.PrometheusPort)
+	if ebpfds.Spec.PrometheusPort == "" {
+		return field.Required(field.NewPath("spec").Child("prometheusPort"), "prometheus port should be provided")
+	}
 
-  if err != nil || port < 1 || port >65535{
-    return field.Invalid(field.NewPath("spec").Child("serverPort"), ebpfds.Spec.ServerPort, "must be a valid port number (1-65535)")
-  }
+	port, err := strconv.Atoi(ebpfds.Spec.PrometheusPort)
 
-  return nil
+	if err != nil || port < 1 || port > 65535 {
+		return field.Invalid(field.NewPath("spec").Child("serverPort"), ebpfds.Spec.ServerPort, "must be a valid port number (1-65535)")
+	}
+
+	return nil
 }
