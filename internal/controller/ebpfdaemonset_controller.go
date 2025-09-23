@@ -195,8 +195,8 @@ func (r *EbpfDaemonSetReconciler) DaemonSetForEbpf(ebpfds *ebpfv1alpha1.EbpfDaem
 	label := map[string]string{
 		"app": ebpfds.Name,
 	}
-  
-  annotations := map[string]string{}
+
+	annotations := map[string]string{}
 
 	volumes := []corev1.Volume{
 		{
@@ -227,25 +227,25 @@ func (r *EbpfDaemonSetReconciler) DaemonSetForEbpf(ebpfds *ebpfv1alpha1.EbpfDaem
 			},
 		},
 	}
-  
-  ports := []corev1.ContainerPort{}
 
-  if ebpfds.Spec.PrometheusPort != "" {
-    if portNum, err := strconv.Atoi(ebpfds.Spec.PrometheusPort); err == nil {
-      ports = append(ports, corev1.ContainerPort{
-        Name:          "metrics",
-        ContainerPort: int32(portNum),
-        Protocol:      corev1.ProtocolTCP,
-      })
+	ports := []corev1.ContainerPort{}
 
-      annotations["prometheus.io/scrape"] = "true"
-	    annotations["prometheus.io/port"] = ebpfds.Spec.PrometheusPort
-	    annotations["prometheus.io/path"] = "/metrics"
+	if ebpfds.Spec.PrometheusPort != "" {
+		if portNum, err := strconv.Atoi(ebpfds.Spec.PrometheusPort); err == nil {
+			ports = append(ports, corev1.ContainerPort{
+				Name:          "metrics",
+				ContainerPort: int32(portNum),
+				Protocol:      corev1.ProtocolTCP,
+			})
 
-    } else {
-      fmt.Printf("error converting prometheusPort %q: %v\n", ebpfds.Spec.PrometheusPort, err)
-    }
-  }
+			annotations["prometheus.io/scrape"] = "true"
+			annotations["prometheus.io/port"] = ebpfds.Spec.PrometheusPort
+			annotations["prometheus.io/path"] = "/metrics"
+
+		} else {
+			fmt.Printf("error converting prometheusPort %q: %v\n", ebpfds.Spec.PrometheusPort, err)
+		}
+	}
 
 	ds := &appsv1.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -259,8 +259,8 @@ func (r *EbpfDaemonSetReconciler) DaemonSetForEbpf(ebpfds *ebpfv1alpha1.EbpfDaem
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: label,
-          Annotations: annotations,
+					Labels:      label,
+					Annotations: annotations,
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
@@ -300,10 +300,10 @@ func (r *EbpfDaemonSetReconciler) DaemonSetForEbpf(ebpfds *ebpfv1alpha1.EbpfDaem
 									Name:  "SERVER_PORT",
 									Value: ebpfds.Spec.ServerPort,
 								},
-                {
-                  Name: "PROMETHEUS_PORT",
-                  Value: ebpfds.Spec.PrometheusPort, 
-                },
+								{
+									Name:  "PROMETHEUS_PORT",
+									Value: ebpfds.Spec.PrometheusPort,
+								},
 								{
 									Name: "NODE_NAME",
 									ValueFrom: &corev1.EnvVarSource{
@@ -313,7 +313,7 @@ func (r *EbpfDaemonSetReconciler) DaemonSetForEbpf(ebpfds *ebpfv1alpha1.EbpfDaem
 									},
 								},
 							},
-              Ports: ports,
+							Ports: ports,
 						},
 					},
 					AutomountServiceAccountToken: ptr.To(false),
@@ -385,17 +385,17 @@ func (r *EbpfDaemonSetReconciler) CmpDaemonSets(found, desires *appsv1.DaemonSet
 		updateEnvVar(&found.Spec.Template.Spec.Containers[0], "SERVER_PORT", desiredSpec.ServerPort)
 	}
 
-  if !equality.Semantic.DeepEqual(foundSpec.PrometheusPort, desiredSpec.PrometheusPort){
-    log.Info("prometheus port differs", "found",foundSpec.PrometheusPort, "desired",desiredSpec.PrometheusPort)
-    diff = true
-    updateEnvVar(&found.Spec.Template.Spec.Containers[0], "PROMETHEUS_PORT", desiredSpec.PrometheusPort)
-    found.Spec.Template.ObjectMeta.Annotations["prometheus.io/port"] = desiredSpec.PrometheusPort
-    
-    if portNum, err := strconv.Atoi(desiredSpec.PrometheusPort); err == nil {
-      found.Spec.Template.Spec.Containers[0].Ports[0].ContainerPort = int32(portNum)
-    }
-    
-  }
+	if !equality.Semantic.DeepEqual(foundSpec.PrometheusPort, desiredSpec.PrometheusPort) {
+		log.Info("prometheus port differs", "found", foundSpec.PrometheusPort, "desired", desiredSpec.PrometheusPort)
+		diff = true
+		updateEnvVar(&found.Spec.Template.Spec.Containers[0], "PROMETHEUS_PORT", desiredSpec.PrometheusPort)
+		found.Spec.Template.ObjectMeta.Annotations["prometheus.io/port"] = desiredSpec.PrometheusPort
+
+		if portNum, err := strconv.Atoi(desiredSpec.PrometheusPort); err == nil {
+			found.Spec.Template.Spec.Containers[0].Ports[0].ContainerPort = int32(portNum)
+		}
+
+	}
 	return diff
 }
 func updateEnvVar(container *corev1.Container, name, value string) {
