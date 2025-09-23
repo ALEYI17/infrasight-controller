@@ -1,0 +1,16 @@
+apiVersion: ebpf.monitoring.dev/v1alpha1
+kind: EbpfDaemonSet
+metadata:
+  labels:
+    app.kubernetes.io/name: kube-ebpf-monitor
+    app.kubernetes.io/managed-by: kustomize
+  name: ebpfdaemonset-sample-open
+spec:
+  image: ghcr.io/aleyi17/ebpf_loader:latest
+  nodeSelector:
+    kubernetes.io/os: linux 
+  enableProbes:
+    - open
+  serverPort: "8080"
+  serverAddress: infrasight-ebpf-server
+  prometheusPort: "9089"
